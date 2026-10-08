@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    # Luna ใช้ Win32 API (SendInput, registry, GetSystemTimes) จึงทดสอบบน Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install (ไม่ลง extra cuda — test ไม่ใช้ GPU/โมเดล)
+        run: uv sync --locked
+      - name: Test
+        run: uv run pytest -v

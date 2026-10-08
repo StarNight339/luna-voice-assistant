@@ -1,0 +1,20 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+
+# ข้อมูลส่วนตัวของผู้ใช้
+config.yaml
+notes.md
+*.log
+
+# โมเดล Whisper (~1.6 GB) สร้างด้วย scripts/download_model.py
+models/whisper/
+
+# ไฟล์เสียงทดสอบ / เสียงตอบรับของแต่ละคน
+samples/
+sounds/*
+!sounds/.gitkeep

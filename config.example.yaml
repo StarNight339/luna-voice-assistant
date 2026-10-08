@@ -1,0 +1,205 @@
+# ตั้งค่า Luna (path สัมพัทธ์ทั้งหมดอิงจากโฟลเดอร์โปรเจกต์)
+# ไฟล์นี้คือแม่แบบ: ครั้งแรกที่รัน Luna จะคัดลอกเป็น config.yaml ให้แก้ (config.yaml ไม่ถูก commit)
+# แก้แล้วกด "โหลดตั้งค่าใหม่" จากไอคอนใน tray ได้เลย ไม่ต้องปิดโปรแกรม
+
+wake:
+  # path ไฟล์ .onnx ที่เทรนเอง (ดู training/) หรือชื่อโมเดลสำเร็จรูปของ openWakeWord: hey_jarvis, alexa, hey_mycroft
+  model: models/wakeword/hey_luna.onnx
+  threshold: 0.5
+
+island: http://localhost:5179   # DynamicIsland API (ไม่ได้เปิดไว้ก็ไม่เป็นไร)
+listening_image: assets/listening.gif   # รูป/GIF บน island ตอนกำลังฟัง (ไม่เกิน 5 MB, ลบบรรทัดนี้ = ใช้อีโมจิ 🎙️)
+
+# ไฟล์เสียงตอบรับ (wav/mp3/ฯลฯ) ไม่มีไฟล์ = เงียบ
+sounds:
+  wake: sounds/wake.wav
+  done: sounds/done.wav
+  error: sounds/error.wav
+
+# browser สำหรับเปิดผลค้นหา (ไม่ตั้ง = browser ค่าเริ่มต้นของ Windows) เช่น
+# browser: 'C:\Program Files\Zen Browser\zen.exe'
+notes_file: notes.md   # "จดโน้ต ..." ต่อท้ายไฟล์นี้
+
+listen:
+  timeout: 4        # วินาที: ไม่เริ่มพูดภายในเวลานี้ = ยกเลิก
+  max: 10           # วินาที: อัดยาวสุด (เผื่อพิมพ์ตามเสียง/จดโน้ต; คำสั่งสั้นจบเร็วเพราะตัดที่ความเงียบ)
+  silence: 0.8      # วินาที: เงียบนานเท่านี้หลังพูด = จบคำสั่ง
+  vad_threshold: 0.5
+
+asr:
+  model_dir: models/whisper/distill-th-large-v3-ct2   # สร้างด้วย scripts/download_model.py
+  beam: 1
+  use_prompt: true  # ส่งคำสั่งเป็น initial_prompt ให้ Whisper ถอดคำสั่งแม่นขึ้น (phrase แรกของแต่ละคำสั่ง + prompt_words)
+  prompt_words: [ค้นหา, หาในยูทูป, หาเพลง, พิมพ์ว่า, จดโน้ต, เตือนให้, ในอีก, นาที, ชั่วโมง, ตั้งเสียง, ยืนยัน, Zen, Discord, Spotify]
+
+match_threshold: 0.75   # ความเหมือนขั้นต่ำ (0-1) ของ fuzzy match
+
+# คำสั่ง: ใช้ phrases (fuzzy) หรือ pattern (regex) อย่างใดอย่างหนึ่ง
+# - phrases: เทียบหลังตัดช่องว่าง/วรรคตอน/คำเสริม (หน่อย, ครับ, โปรแกรม ฯลฯ) และทำเป็นตัวเล็ก
+# - pattern: regex บนข้อความที่ "ยังมีช่องว่างและตัวพิมพ์เดิม" (ตัดแค่ "เฮ้ ลูน่า" ด้านหน้า) ไม่สนตัวเล็ก/ใหญ่
+#   Whisper มักไม่เว้นวรรคภาษาไทย จึงควรใส่ \s* ระหว่างคำ; pattern ที่ match ชนะ phrases เสมอ และเช็กตามลำดับในไฟล์
+# - {1}, {2} ใน action = กลุ่มที่ pattern จับได้ (เลขไทยเป็นคำ เช่น "ห้า" จะถูกแปลงเป็น 5), {1:url} = encode ใส่ URL
+# - confirm: true = ต้องพูด "ยืนยัน" อีกครั้งก่อนทำ
+# action.type: open | web | shell | key | hotkey | type | note | lock | power | status | volume | timer | reminder
+#              | notify | time (show: date = บอกวันที่) | cancel
+#   key/hotkey: volume_up, volume_down, mute, play_pause, next, prev, stop, ctrl, alt, shift, win, enter, tab, esc,
+#               space, backspace, delete, printscreen, home, end, pageup, pagedown, left/up/right/down, f1-f12, a-z, 0-9
+#   timer/reminder: ระยะเวลาเป็นข้อความ เช่น "20 นาที", "ครึ่งชั่วโมง", "1 ชั่วโมง 30 นาที"
+commands:
+  # ---- ค้นหา (pattern เฉพาะต้องอยู่ก่อน "ค้นหา" ทั่วไป) ----
+  - name: หาเพลงใน Spotify
+    pattern: '^(?:ค้นหาเพลง|หาเพลง|เปิดเพลงของ|ฟังเพลงของ)\s*(.+)'
+    action: {type: web, url: "spotify:search:{1:url}"}
+
+  - name: ค้นหาใน YouTube
+    # ต้องมีคำว่า หา/ค้นหา เสมอ ไม่งั้น "เปิดยูทูปหน่อย" จะกลายเป็นค้นหาคำว่า "หน่อย"
+    pattern: '^(?:(?:ค้นหา|หา)ใน\s*(?:ยูทู[ปบ]|youtube)|(?:เปิด)?\s*(?:ยูทู[ปบ]|youtube)\s*(?:ค้นหา|หา))\s*(.+)'
+    action: {type: web, url: "https://www.youtube.com/results?search_query={1:url}"}
+
+  - name: ค้นหา
+    pattern: '^(?:ค้นหาว่า|ค้นหา|หาข้อมูล|กูเกิ้?ล|google|search)\s*(.+)'
+    action: {type: web, url: "https://www.google.com/search?q={1:url}"}
+
+  # ---- พิมพ์ตามเสียง / โน้ต ----
+  - name: พิมพ์ตามเสียง
+    pattern: '^พิม(?:พ์)?(?:คำ)?(?:ว่า)?\s*(.+)'
+    action: {type: type, text: "{1}"}
+
+  - name: จดโน้ต
+    pattern: '^(?:จด|บันทึก)(?:โน้ต|โน๊ต)?(?:ว่า)?\s*(.+)'
+    action: {type: note, text: "{1}"}
+
+  - name: เปิดโน้ต
+    phrases: [เปิดโน้ต, เปิดสมุดโน้ต, ดูโน้ต]
+    action: {type: open, target: notes.md}
+
+  - name: ขึ้นบรรทัดใหม่
+    phrases: [ขึ้นบรรทัดใหม่, กด enter, กดเอนเทอร์, เอนเทอร์]
+    action: {type: hotkey, keys: [enter]}
+
+  # ---- หน้าต่าง / ระบบ ----
+  - name: ย่อทุกหน้าต่าง
+    phrases: [ย่อทุกหน้าต่าง, ไปหน้าเดสก์ท็อป, กลับหน้าจอหลัก, ซ่อนหน้าต่าง]
+    action: {type: hotkey, keys: [win, d]}
+
+  - name: ปิดหน้าต่าง
+    phrases: [ปิดหน้าต่างนี้, ปิดหน้าต่าง, ปิดแท็บนี้]
+    action: {type: hotkey, keys: [alt, f4]}
+
+  - name: สลับหน้าต่าง
+    phrases: [สลับหน้าต่าง, เปลี่ยนหน้าต่าง]
+    action: {type: hotkey, keys: [alt, tab]}
+
+  - name: แคปหน้าจอ
+    phrases: [แคปจอ, แคปหน้าจอ, ถ่ายภาพหน้าจอ, screenshot]
+    action: {type: hotkey, keys: [win, printscreen]}   # บันทึกไว้ที่ Pictures\Screenshots
+
+  - name: สถานะเครื่อง
+    phrases: [สถานะเครื่อง, เช็คเครื่อง, แบตเหลือเท่าไหร่, แบตเตอรี่เหลือเท่าไหร่, แรมเหลือเท่าไหร่, ซีพียูเท่าไหร่]
+    action: {type: status}
+
+  - name: ปิดเครื่อง
+    phrases: [ปิดเครื่อง, ปิดคอม, ชัตดาวน์]
+    confirm: true
+    action: {type: power, mode: shutdown}
+
+  - name: รีสตาร์ทเครื่อง
+    phrases: [รีสตาร์ท, รีสตาร์ทเครื่อง, รีสตาร์ทคอม]
+    confirm: true
+    action: {type: power, mode: restart}
+
+  - name: พักเครื่อง
+    phrases: [พักเครื่อง, สลีป, sleep]
+    confirm: true
+    action: {type: power, mode: sleep}
+
+  # ---- เตือนความจำ / ระดับเสียง ----
+  - name: เตือนความจำ
+    pattern: '^(?:ช่วย)?เตือน(?:ให้|ว่า)?\s*(.+?)\s*(?:ในอีก|อีก)\s*(.+?(?:นาที|ชั่วโมง)(?:ครึ่ง)?)(?:\s*(?:นะ|ครับ|ค่ะ|คะ|ด้วย|หน่อย))*$'
+    action: {type: reminder, message: "{1}", after: "{2}"}
+
+  - name: เตือนความจำ
+    pattern: '^(?:ในอีก|อีก)\s*(.+?(?:นาที|ชั่วโมง)(?:ครึ่ง)?)\s*(?:ช่วย)?เตือน(?:ให้|ว่า)?\s*(.+?)(?:\s*(?:นะ|ครับ|ค่ะ|คะ|ด้วย|หน่อย))*$'
+    action: {type: reminder, after: "{1}", message: "{2}"}
+
+  - name: ตั้งระดับเสียง
+    pattern: '^(?:ตั้ง|ปรับ)?(?:ระดับ)?เสียง(?:เป็น|ที่|ไว้ที่)?\s*(\d+|(?:ศูนย์|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|ยี่|เอ็ด|ร้อย)+)\s*(?:%|เปอร์เซ็นต์|เปอร์เซ็น)?(?:\s*(?:นะ|ครับ|ค่ะ|คะ|หน่อย))*$'
+    action: {type: volume, level: "{1}"}
+
+  - name: ยกเลิก
+    phrases: [ยกเลิก, ไม่มีอะไร, ไม่เป็นไร]
+    action: {type: cancel}
+
+  # ---- เปิดแอป ----
+  - name: เปิด Chrome
+    phrases: [เปิดโครม, เปิด chrome, เปิดเบราว์เซอร์]
+    action: {type: open, target: chrome}
+
+  - name: เปิด Zen
+    # Whisper มักถอด "zen" เป็น เซนต์/เซน/ซีน จึงใส่ไว้หลายแบบ
+    phrases: [เปิด zen, เปิดเซน, เปิดเซนต์, เปิดเซ็น, เปิดซีน, เปิดเซนบราวเซอร์]
+    action: {type: open, target: 'C:\Program Files\Zen Browser\zen.exe'}
+
+  - name: เปิด Discord
+    phrases: [เปิด discord, เปิดดิสคอร์ด, เปิดดิสคอด, เปิดดิสคอส]
+    action: {type: open, target: 'shell:AppsFolder\com.squirrel.Discord.Discord'}
+
+  - name: เปิด Spotify
+    phrases: [เปิด spotify, เปิดสปอติฟาย, เปิดสปอตติฟาย, เปิดสปอทิฟาย]
+    action: {type: open, target: '%APPDATA%\Spotify\Spotify.exe'}
+
+  - name: เปิด YouTube
+    phrases: [เปิดยูทูป, เปิด youtube]
+    action: {type: open, target: "https://www.youtube.com"}
+
+  - name: เปิด Notepad
+    phrases: [เปิดโน้ตแพด, เปิด notepad]
+    action: {type: open, target: notepad}
+
+  - name: เพิ่มเสียง
+    phrases: [เพิ่มเสียง, เสียงดังขึ้น]
+    action: {type: key, key: volume_up, repeat: 5}
+
+  - name: ลดเสียง
+    phrases: [ลดเสียง, เสียงเบาลง]
+    action: {type: key, key: volume_down, repeat: 5}
+
+  - name: ปิดเสียง
+    phrases: [ปิดเสียง, เงียบ]
+    action: {type: key, key: mute}
+
+  - name: เล่น/หยุดเพลง
+    phrases: [หยุดเพลง, เล่นเพลง, เล่นต่อ, พักเพลง]
+    action: {type: key, key: play_pause}
+
+  - name: เพลงถัดไป
+    phrases: [เพลงถัดไป, ข้ามเพลง]
+    action: {type: key, key: next}
+
+  - name: เพลงก่อนหน้า
+    phrases: [เพลงก่อนหน้า, ย้อนเพลง]
+    action: {type: key, key: prev}
+
+  - name: ล็อกเครื่อง
+    phrases: [ล็อกเครื่อง, ล็อกคอม, ล็อกหน้าจอ]
+    action: {type: lock}
+
+  - name: ตั้งเวลา
+    pattern: 'ตั้งเวลา\s*(.+?(?:นาที|ชั่วโมง)(?:ครึ่ง)?)'
+    action: {type: timer, duration: "{1}"}
+
+  - name: ยกเลิกเวลา
+    phrases: [ยกเลิกเวลา, ยกเลิกตัวจับเวลา, หยุดจับเวลา]
+    action: {type: timer, minutes: 0}
+
+  - name: บอกเวลา
+    phrases: [ตอนนี้เวลาเท่าไหร่, กี่โมงแล้ว, เวลาเท่าไหร่, ตอนนี้กี่โมง, what time is it, what is the time]
+    action: {type: time}
+
+  - name: บอกวันที่
+    phrases: [วันนี้วันที่เท่าไหร่, วันนี้วันอะไร, วันที่เท่าไหร่]
+    action: {type: time, show: date}
+
+  - name: ทดสอบ
+    phrases: [ทดสอบ, สวัสดี]
+    action: {type: notify, title: "สวัสดีค่ะ 👋", body: "Luna พร้อมใช้งาน"}

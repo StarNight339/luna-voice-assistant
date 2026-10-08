@@ -1,0 +1,43 @@
+[project]
+name = "luna-voice-assistant"
+version = "0.1.0"
+description = "ผู้ช่วยสั่งงานคอมด้วยเสียงภาษาไทย: เรียก \"เฮ้ ลูน่า\" แล้วสั่งได้เลย (openWakeWord + Thonburian Whisper)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "StarNight" }]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "faster-whisper>=1.1",
+    "openwakeword>=0.6",
+    "onnxruntime>=1.17",
+    "sounddevice>=0.4.6",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "pystray>=0.19",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# GPU NVIDIA: cuBLAS/cuDNN สำหรับ CTranslate2 (ไม่ต้องลง CUDA Toolkit แยก)
+cuda = [
+    "nvidia-cublas-cu12",
+    "nvidia-cudnn-cu12>=9,<10",
+    "nvidia-cuda-nvrtc-cu12",
+]
+
+[project.scripts]
+luna = "luna.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["luna"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
