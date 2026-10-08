@@ -18,7 +18,8 @@ from luna.asr import DEFAULT_MODEL_DIR
 from luna.paths import resolve
 
 SOURCE = "biodatlab/distill-whisper-th-large-v3"
-CONVERTER_DEPS = ["ctranslate2>=4.4", "transformers[torch]>=4.40,<4.47", "huggingface_hub<0.30"]
+# ctranslate2 รุ่นใหม่ส่ง dtype= ให้ from_pretrained ซึ่งต้องใช้ transformers >= 4.56
+CONVERTER_DEPS = ["ctranslate2>=4.6", "transformers[torch]>=4.56"]
 
 
 def convert_whisper(force, out=None):
