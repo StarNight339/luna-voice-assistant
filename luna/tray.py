@@ -1,4 +1,5 @@
 """ไอคอนใน system tray: เปิด/หยุดฟัง, ตั้งค่า, log, เปิดตอนเข้า Windows, ออก"""
+import ctypes
 import logging
 import os
 import threading
@@ -6,10 +7,13 @@ import threading
 import pystray
 from PIL import Image, ImageEnhance, ImageOps
 
-from . import autostart, commands
+from . import autostart, commands, shortcut
 from .paths import LOG_DIR, ROOT
 
 log = logging.getLogger(__name__)
+
+TOGGLE_EVENT = "Local\\LunaToggle"  # ตรงกับ __main__.TOGGLE_EVENT
+WAIT_OBJECT_0 = 0
 
 STATE_TEXT = {
     "starting": "กำลังโหลดโมเดล...",
@@ -40,8 +44,10 @@ def run_tray(luna):
 
     def notify(title, emoji):
         cfg = getattr(luna, "cfg", None)
-        if cfg:
+        if cfg and cfg.get("island"):
             commands.island(cfg, "/notify", {"title": title, "icon": emoji, "duration": 2})
+        else:  # ไม่มี Dynamic Island ใช้ toast ของ Windows แทน
+            icon.notify(title, "Luna")
 
     def toggle(_icon=None, _item=None):
         if luna.paused:
@@ -57,6 +63,28 @@ def run_tray(luna):
         else:
             autostart.enable()
         icon.update_menu()
+
+    def toggle_shortcut(_icon, _item):
+        try:
+            if shortcut.is_enabled():
+                shortcut.disable()
+            else:
+                shortcut.enable()
+        except Exception:
+            log.exception("แก้ทางลัดไม่ได้")
+        icon.update_menu()
+
+    def listen_toggle():
+        """ดับเบิลคลิกทางลัดตอน Luna เปิดอยู่ -> instance ใหม่ SetEvent -> สลับหยุดฟัง/ฟังต่อ"""
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CreateEventW.restype = ctypes.c_void_p
+        handle = ctypes.c_void_p(kernel32.CreateEventW(None, False, False, TOGGLE_EVENT))  # auto-reset
+        if not handle.value:
+            log.warning("สร้าง toggle event ไม่ได้")
+            return
+        while not luna._stop.is_set():
+            if kernel32.WaitForSingleObject(handle, 500) == WAIT_OBJECT_0:
+                toggle()
 
     def quit_app(_icon, _item):
         luna.stop()
@@ -74,6 +102,7 @@ def run_tray(luna):
         pystray.MenuItem("โหลดตั้งค่าใหม่", lambda: luna.reload_config()),
         pystray.MenuItem("เปิดโฟลเดอร์ log", lambda: os.startfile(LOG_DIR)),
         pystray.MenuItem("เปิดตอนเข้า Windows", toggle_startup, checked=lambda _: autostart.is_enabled()),
+        pystray.MenuItem("ทางลัดใน Start Menu / Desktop", toggle_shortcut, checked=lambda _: shortcut.is_enabled()),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("ออก", quit_app),
     )
@@ -84,5 +113,6 @@ def run_tray(luna):
         tray_icon.visible = True
         # daemon: ถ้ากดออกระหว่าง Whisper กำลังถอดเสียง ไม่ต้องรอให้เสร็จ
         threading.Thread(target=luna.run, name="luna-bot", daemon=True).start()
+        threading.Thread(target=listen_toggle, name="luna-toggle", daemon=True).start()
 
     icon.run(setup=start_bot)

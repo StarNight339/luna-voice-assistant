@@ -7,14 +7,25 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 VALUE = "Luna"
 
 
-def startup_command(python=None):
-    """คำสั่งที่ Windows จะรันตอน login: pythonw (ไม่มีหน้าต่าง console) -m luna
-    (`uv sync` ติดตั้ง package luna ลง venv แล้ว จึงรันได้จาก working directory ใดก็ได้)"""
-    exe = Path(python or sys.executable)
-    pythonw = exe.with_name("pythonw.exe")
-    if pythonw.exists() or python is not None:
-        exe = pythonw
-    return subprocess.list2cmdline([str(exe), "-m", "luna"])
+def launcher(prefix=None, base_prefix=None):
+    """[exe, *args] สำหรับเปิด Luna แบบไม่มีหน้าต่าง console
+
+    pythonw.exe (และ gui-scripts) ใน venv ที่ uv สร้างเป็นโปรแกรม console -> Windows เปิด terminal ขึ้นมา
+    จึงเรียก pythonw.exe ของ Python หลัก (GUI จริง) แล้วให้มันโหลด site-packages ของ venv เอง
+    ตั้ง sys.prefix เป็น venv ด้วย เพราะ asr.py หา DLL ของ CUDA จาก sys.prefix"""
+    venv, base = Path(prefix or sys.prefix), Path(base_prefix or sys.base_prefix)
+    pythonw = str(base / "pythonw.exe")
+    if venv == base:  # ไม่ได้อยู่ใน venv
+        return [pythonw, "-m", "luna"]
+    boot = (f"import site,sys;sys.prefix=sys.exec_prefix={str(venv)!r};"
+            f"site.addsitedir({str(venv / 'Lib' / 'site-packages')!r});"
+            "sys.argv[0]='luna';from luna.__main__ import main;main()")
+    return [pythonw, "-c", boot]
+
+
+def startup_command(prefix=None, base_prefix=None):
+    """คำสั่งที่ Windows จะรันตอน login (รันได้จาก working directory ใดก็ได้)"""
+    return subprocess.list2cmdline(launcher(prefix, base_prefix))
 
 
 def is_enabled():

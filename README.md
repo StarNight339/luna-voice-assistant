@@ -25,6 +25,7 @@ uv run luna                                # เปิด Luna (ไอคอน�
 ```
 
 ครั้งแรกที่รัน Luna จะสร้าง `config.yaml` จาก `config.example.yaml` ให้แก้ได้ตามต้องการ
+และสร้างทางลัด **Luna** ใน Start Menu กับ Desktop ให้ ครั้งต่อไปดับเบิลคลิกทางลัดได้เลย ไม่ต้องเปิด terminal
 
 ## ใช้งาน
 
@@ -43,16 +44,25 @@ uv run luna                                # เปิด Luna (ไอคอน�
 
 ### เปิด/ปิด Luna
 
+ทางลัด **Luna** บน Desktop / Start Menu (หรือกดปุ่ม Start แล้วพิมพ์ "Luna"):
+
+- **ยังไม่เปิด** → ดับเบิลคลิก = เปิด Luna
+- **เปิดอยู่แล้ว** → ดับเบิลคลิก = หยุดฟังชั่วคราว / ฟังต่อ (มีแจ้งเตือนบอกทุกครั้ง)
+- อยากได้คีย์ลัด: คลิกขวาทางลัดใน Start Menu → Open file location → คลิกขวา Luna → Properties → **Shortcut key** เช่น `Ctrl+Alt+L`
+  แล้วกดคีย์นั้นเพื่อเปิด/หยุดฟัง/ฟังต่อได้จากทุกที่
+
 ไอคอน 🌙 ใน system tray (มุมขวาล่าง):
 
 - **คลิกซ้าย** = หยุดฟังชั่วคราว / ฟังต่อ (ตอนหยุด Luna ปิดไมค์จริง ไอคอนเป็นสีเทา)
-- **คลิกขวา** = เมนู: เปิดไฟล์ตั้งค่า · โหลดตั้งค่าใหม่ · เปิดโฟลเดอร์ log · ☑ เปิดตอนเข้า Windows · ออก
+- **คลิกขวา** = เมนู: เปิดไฟล์ตั้งค่า · โหลดตั้งค่าใหม่ · เปิดโฟลเดอร์ log · ☑ เปิดตอนเข้า Windows · ☑ ทางลัดใน Start Menu / Desktop · ออก
 
 หรือใช้คำสั่ง:
 
 ```powershell
 uv run luna install-startup      # เปิด Luna อัตโนมัติตอนเข้า Windows (ไม่มีหน้าต่าง console)
 uv run luna uninstall-startup
+uv run luna install-shortcut     # สร้างทางลัดใน Start Menu / Desktop ใหม่ (ถ้าลบไปแล้ว)
+uv run luna uninstall-shortcut
 uv run luna --console            # รันใน console เห็น log สด
 uv run luna --console --no-wake  # กด Enter แทนการเรียกชื่อ (ทดสอบคำสั่ง)
 uv run luna --console --debug    # ดูคะแนน wake word (ไว้ปรับ threshold)
@@ -120,7 +130,8 @@ luna/
   asr.py        โหลด Whisper (GPU -> CPU fallback), initial_prompt
   audio.py      ไมค์, ตรวจพูดจบด้วย Silero VAD, เสียงตอบรับ
   winctl.py     Win32 ผ่าน ctypes: คีย์/คีย์ผสม, พิมพ์ข้อความ, สถานะเครื่อง, ระดับเสียง
-  tray.py       ไอคอน system tray
+  tray.py       ไอคอน system tray + รับสัญญาณสลับฟังจากทางลัด
+  shortcut.py   ทางลัดใน Start Menu / Desktop
   autostart.py  เปิดตอนเข้า Windows (HKCU Run)
 scripts/        download_model.py, bench_asr.py, test_asr.py
 training/       notebook เทรน wake word

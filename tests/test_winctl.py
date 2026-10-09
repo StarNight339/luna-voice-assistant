@@ -23,11 +23,12 @@ def test_system_status_text():
     assert status.startswith("CPU ") and "RAM " in status
 
 
-def test_startup_command_uses_pythonw():
-    cmd = autostart.startup_command(r"C:\proj\.venv\Scripts\python.exe")
-    assert cmd == r"C:\proj\.venv\Scripts\pythonw.exe -m luna"
+def test_startup_command_uses_base_pythonw():
+    cmd = autostart.startup_command(r"C:\proj\.venv", r"C:\py312")
+    assert cmd.startswith(r'C:\py312\pythonw.exe -c "import site,sys;')  # pythonw ใน venv ของ uv เป็น console
+    assert r"site.addsitedir('C:\\proj\\.venv\\Lib\\site-packages')" in cmd
 
 
 def test_startup_command_quotes_spaces():
-    cmd = autostart.startup_command(r"C:\My Projects\.venv\Scripts\python.exe")
-    assert cmd == r'"C:\My Projects\.venv\Scripts\pythonw.exe" -m luna'
+    cmd = autostart.startup_command(r"C:\My Python", r"C:\My Python")
+    assert cmd == r'"C:\My Python\pythonw.exe" -m luna'
