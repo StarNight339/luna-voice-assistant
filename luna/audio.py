@@ -13,14 +13,29 @@ CHUNK = 1280  # 80ms ตามที่ openWakeWord ต้องการ
 PLAY_SR = 44100
 
 
-def load_sounds(cfg):
-    from faster_whisper import decode_audio
+def decode(path, rate=PLAY_SR):
+    """ไฟล์เสียงอะไรก็ได้ที่ ffmpeg อ่านได้ -> float32 mono ที่ rate
+    (ไม่ใช้ faster_whisper.decode_audio เพราะส่ง metadata_errors ที่ PyAV >= 15 ไม่รับแล้ว)"""
+    import av
 
+    resampler = av.AudioResampler(format="flt", layout="mono", rate=rate)
+    chunks = []
+    with av.open(path) as container:
+        for frame in container.decode(audio=0):
+            chunks += [f.to_ndarray().reshape(-1) for f in resampler.resample(frame)]
+    chunks += [f.to_ndarray().reshape(-1) for f in resampler.resample(None)]  # flush
+    return np.concatenate(chunks) if chunks else np.zeros(0, np.float32)
+
+
+def load_sounds(cfg):
     sounds = {}
     for name, path in (cfg.get("sounds") or {}).items():
         p = resolve(path)
         if p.exists():
-            sounds[name] = decode_audio(str(p), sampling_rate=PLAY_SR)
+            try:
+                sounds[name] = decode(str(p))
+            except Exception as e:  # noqa: BLE001 — ไฟล์เสียงเสียไม่ควรทำให้ Luna เปิดไม่ได้
+                log.warning("อ่านไฟล์เสียง %s ไม่ได้: %s (ข้าม)", path, e)
         else:
             log.info("ไม่พบไฟล์เสียง %s: %s (ข้าม)", name, path)
     return sounds
