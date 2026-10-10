@@ -19,6 +19,7 @@ sounds:
 # browser สำหรับเปิดผลค้นหา (ไม่ตั้ง = browser ค่าเริ่มต้นของ Windows) เช่น
 # browser: 'C:\Program Files\Zen Browser\zen.exe'
 notes_file: notes.md   # "จดโน้ต ..." ต่อท้ายไฟล์นี้
+claude_cwd: '~'        # โฟลเดอร์ที่ Claude Code เริ่มทำงาน ("ถาม Claude Code ว่า ...")
 
 listen:
   timeout: 4        # วินาที: ไม่เริ่มพูดภายในเวลานี้ = ยกเลิก
@@ -30,7 +31,7 @@ asr:
   model_dir: models/whisper/distill-th-large-v3-ct2   # สร้างด้วย scripts/download_model.py
   beam: 1
   use_prompt: true  # ส่งคำสั่งเป็น initial_prompt ให้ Whisper ถอดคำสั่งแม่นขึ้น (phrase แรกของแต่ละคำสั่ง + prompt_words)
-  prompt_words: [ค้นหา, หาในยูทูป, หาเพลง, พิมพ์ว่า, จดโน้ต, เตือนให้, ในอีก, นาที, ชั่วโมง, ตั้งเสียง, ยืนยัน, Zen, Discord, Spotify]
+  prompt_words: [ค้นหา, หาในยูทูป, หาเพลง, พิมพ์ว่า, จดโน้ต, เตือนให้, ในอีก, นาที, ชั่วโมง, ตั้งเสียง, ยืนยัน, Zen, Discord, Spotify, Claude]
 
 match_threshold: 0.75   # ความเหมือนขั้นต่ำ (0-1) ของ fuzzy match
 
@@ -41,11 +42,20 @@ match_threshold: 0.75   # ความเหมือนขั้นต่ำ (0
 # - {1}, {2} ใน action = กลุ่มที่ pattern จับได้ (เลขไทยเป็นคำ เช่น "ห้า" จะถูกแปลงเป็น 5), {1:url} = encode ใส่ URL
 # - confirm: true = ต้องพูด "ยืนยัน" อีกครั้งก่อนทำ
 # action.type: open | web | shell | key | hotkey | type | note | lock | power | status | volume | timer | reminder
-#              | notify | time (show: date = บอกวันที่) | cancel
+#              | notify | time (show: date = บอกวันที่) | claude (prompt: คำถาม, ไม่ใส่ = เปิด session เปล่า) | cancel
 #   key/hotkey: volume_up, volume_down, mute, play_pause, next, prev, stop, ctrl, alt, shift, win, enter, tab, esc,
 #               space, backspace, delete, printscreen, home, end, pageup, pagedown, left/up/right/down, f1-f12, a-z, 0-9
 #   timer/reminder: ระยะเวลาเป็นข้อความ เช่น "20 นาที", "ครึ่งชั่วโมง", "1 ชั่วโมง 30 นาที"
 commands:
+  # ---- Claude (Whisper มักถอด Claude เป็น คลอด/คล็อด/คลาวด์/เคลาด์) ----
+  - name: ถาม Claude Code
+    pattern: '^(?:ถาม|สั่ง|ให้)\s*(?:claude|คลอด|คล็อด|คลาวด์?|เคลาด์?)\s*(?:code|โค้ด|โค๊ด)?\s*(?:ว่า|ให้)?\s*(.+)'
+    action: {type: claude, prompt: "{1}"}
+
+  - name: เปิด Claude Code
+    pattern: '^(?:เปิด|ใช้)\s*(?:claude|คลอด|คล็อด|คลาวด์?|เคลาด์?)\s*(?:code|โค้ด|โค๊ด)'
+    action: {type: claude}
+
   # ---- ค้นหา (pattern เฉพาะต้องอยู่ก่อน "ค้นหา" ทั่วไป) ----
   - name: หาเพลงใน Spotify
     pattern: '^(?:ค้นหาเพลง|หาเพลง|เปิดเพลงของ|ฟังเพลงของ)\s*(.+)'
@@ -147,6 +157,10 @@ commands:
   - name: เปิด Spotify
     phrases: [เปิด spotify, เปิดสปอติฟาย, เปิดสปอตติฟาย, เปิดสปอทิฟาย]
     action: {type: open, target: '%APPDATA%\Spotify\Spotify.exe'}
+
+  - name: เปิด Claude
+    phrases: [เปิด claude, เปิดคลอด, เปิดคล็อด, เปิดคลาวด์, เปิดเคลาด์]
+    action: {type: open, target: 'shell:AppsFolder\Claude_pzs8sxrjxfjjc!Claude'}
 
   - name: เปิด YouTube
     phrases: [เปิดยูทูป, เปิด youtube]

@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import threading
 import unicodedata
@@ -237,6 +238,15 @@ def run(cmd, groups, cfg, ctx=None):
         if action.get("show") == "date":
             return f"วัน{THAI_DAYS[now.weekday()]}ที่ {now.day} {THAI_MONTHS[now.month - 1]} {now.year + 543}"
         return f"ตอนนี้ {now:%H:%M} น."
+    elif kind == "claude":
+        exe = shutil.which("claude")
+        if not exe:
+            raise ValueError("ไม่พบคำสั่ง claude (ติดตั้ง Claude Code ก่อน)")
+        prompt = action.get("prompt", "").strip()
+        cwd = os.path.expandvars(os.path.expanduser(cfg.get("claude_cwd") or "~"))
+        # ส่ง argv เป็น list ไม่ผ่าน shell: ข้อความจากเสียงที่มี ' " ; จะไม่กลายเป็นคำสั่ง
+        subprocess.Popen([exe, prompt] if prompt else [exe], cwd=cwd, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        return "ถาม Claude Code แล้ว" if prompt else "เปิด Claude Code"
     elif kind == "cancel":
         return "ยกเลิกแล้ว"
     else:

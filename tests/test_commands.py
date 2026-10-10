@@ -61,6 +61,14 @@ CASES = [
     ("วันนี้วันอะไร", "บอกวันที่", None),
     ("เพลงถัดไป", "เพลงถัดไป", None),
     ("ล็อกเครื่อง", "ล็อกเครื่อง", None),
+    # Claude
+    ("ถาม Claude Code ว่า สรุปไฟล์ README ให้หน่อย", "ถาม Claude Code", ("สรุปไฟล์ README ให้หน่อย",)),
+    ("ถามคลอดโค้ดว่าวันนี้มีงานอะไร", "ถาม Claude Code", ("วันนี้มีงานอะไร",)),
+    ("เปิดคลอดโค้ด", "เปิด Claude Code", None),
+    ("เปิด Claude Code", "เปิด Claude Code", None),
+    ("เปิด Claude", "เปิด Claude", None),
+    ("เปิดคลอดหน่อย", "เปิด Claude", None),
+    ("เปิดโครม", "เปิด Chrome", None),
     # ไม่ใช่คำสั่ง
     ("วันนี้อากาศดีจัง", None, None),
     ("หาวมากเลย", None, None),
@@ -105,6 +113,25 @@ def test_web_url_is_encoded(cfg, monkeypatch):
     url = opened[0][-1]
     assert url.startswith("https://www.google.com/search?q=how+to+cook+")
     assert "%26+more" in url and " " not in url
+
+
+def test_claude_passes_prompt_as_argv(cfg, monkeypatch):
+    launched = []
+    monkeypatch.setattr(commands.shutil, "which", lambda _: r"C:\bin\claude.exe")
+    monkeypatch.setattr(commands.subprocess, "Popen", lambda args, **kw: launched.append((args, kw)))
+    cmd, groups, _ = commands.match("ถาม Claude Code ว่า it's \"x\"; exit", cfg)
+    assert commands.run(cmd, groups, cfg) == "ถาม Claude Code แล้ว"
+    assert launched[0][0] == [r"C:\bin\claude.exe", "it's \"x\"; exit"]
+
+    cmd, groups, _ = commands.match("เปิด Claude Code", cfg)
+    assert commands.run(cmd, groups, cfg) == "เปิด Claude Code"
+    assert launched[1][0] == [r"C:\bin\claude.exe"]
+
+
+def test_claude_missing_raises(cfg, monkeypatch):
+    monkeypatch.setattr(commands.shutil, "which", lambda _: None)
+    with pytest.raises(ValueError):
+        commands.run({"action": {"type": "claude"}}, (), cfg)
 
 
 def test_note_appends_line(cfg, tmp_path):
